@@ -1,7 +1,9 @@
 fastapi
 uvicorn
-python-dotenv
-langchain
+langchain==0.3
 langchain-community
 langchain-google-genai
-PyPDF2
+python-dotenv
+pypdf
+python-multipart
+pydantic
