@@ -1,3 +1,12 @@
+---
+title: Rag Application
+emoji: 🐠
+colorFrom: gray
+colorTo: blue
+sdk: docker
+pinned: false
+---
+
 # PDF Chatbot API
 
 This project is a FastAPI-based application that allows users to upload PDF files, extract their content, and interact with the content through a conversational interface powered by Google Generative AI. The application supports session-based interactions, where users can upload a PDF, receive a unique session ID, and then query the content of the PDF using natural language.
