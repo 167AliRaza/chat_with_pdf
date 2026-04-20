@@ -16,9 +16,9 @@ The frontend for this application is available at: [https://chatwithpdf-aliraza.
 
 ## Features
 - **PDF Upload**: Upload PDF files and validate their format.
-- **Text Extraction and Indexing**: Extract text from PDFs and create a searchable index using LangChain and Google Generative AI embeddings.
+- **Text Extraction and Indexing**: Extract text from PDFs and persist a FAISS index on disk for fast reuse.
 - **Conversational Interface**: Query the PDF content using natural language, with conversation history maintained for each session.
-- **Session Management**: Each PDF upload creates a unique session, allowing multiple users to interact with different PDFs concurrently.
+- **Session Management**: Each PDF upload creates a unique session, with Redis storing only file/index references and chat history.
 - **CORS Support**: Configured to allow cross-origin requests, making it compatible with web frontends.
 
 ## Tech Stack
@@ -26,12 +26,15 @@ The frontend for this application is available at: [https://chatwithpdf-aliraza.
 - **LangChain**: For document loading, text splitting, and vector store indexing.
 - **Google Generative AI**: For embeddings (`embedding-001`) and language model (`gemini-1.5-flash`).
 - **PyPDFLoader**: For extracting text from PDF files.
+- **FAISS**: For persistent local vector index storage.
+- **Redis**: For persistent session and chat history storage.
 - **Pydantic**: For request validation and data modeling.
 - **Python**: Core programming language.
 
 ## Prerequisites
 - Python 3.8+
 - A Google API key for Google Generative AI (set as `GEMINI_API_KEY` in a `.env` file).
+- A running Redis instance.
 - Required Python packages (listed in `requirements.txt`).
 
 ## Installation
@@ -55,6 +58,9 @@ The frontend for this application is available at: [https://chatwithpdf-aliraza.
 4. Create a `.env` file in the project root and add your Google API key:
    ```plaintext
    GEMINI_API_KEY=your-google-api-key
+   REDIS_URL=redis://localhost:6379/0
+   SESSION_TTL_SECONDS=86400
+   SESSION_STORAGE_DIR=./storage/sessions
    ```
 
 5. Run the FastAPI server:
@@ -116,27 +122,28 @@ The frontend for this application is available at: [https://chatwithpdf-aliraza.
 ├── requirements.txt       # Python dependencies
 ├── .env                   # Environment variables (not tracked in git)
 ├── README.md              # This file
-└── /tmp                   # Temporary storage for uploaded PDFs
+├── app.py                 # FastAPI application code
+└── temp dir               # Temporary storage for uploaded PDFs
 ```
 
 ## Dependencies
 Install the required packages using:
 ```bash
-pip install fastapi uvicorn python-multipart python-dotenv langchain langchain-community langchain-google-genai pypdf
+pip install fastapi uvicorn python-multipart python-dotenv langchain langchain-community langchain-google-genai pypdf redis faiss-cpu
 ```
 
 ## Notes
-- **Session Management**: The application stores session data in memory (`user_sessions` dictionary). For production, consider using a persistent storage solution (e.g., Redis) to handle sessions across server restarts.
-- **Temporary Files**: Uploaded PDFs are stored temporarily in `/tmp` and deleted after processing. Ensure the `/tmp` directory is writable.
+- **Session Management**: Redis stores only the session metadata: `pdf_path`, `index_path`, and the latest 5 chat turns.
+- **Persistent Index**: Each upload stores the original PDF and a FAISS index under `SESSION_STORAGE_DIR`.
+- **Chat Performance**: The `/chat/` endpoint loads the saved FAISS index directly instead of rebuilding embeddings.
 - **CORS**: The API allows all origins (`*`) for simplicity. In production, restrict `allow_origins` to your frontend domain (e.g., `https://chatwithpdf-aliraza.netlify.app`).
-- **Conversation Memory**: Each session maintains a conversation history with a maximum of 5 turns (configurable in `ConversationBufferMemory`).
+- **Session Expiry**: Redis keys expire automatically using `SESSION_TTL_SECONDS` (default: 86400 seconds).
 
 ## Error Handling
 - **Invalid PDF**: Returns a 400 error if the uploaded file is not a valid PDF.
 - **Session Not Found**: Returns a 404 error if the `session_id` provided in the `/chat/` endpoint does not exist.
 
 ## Future Improvements
-- Add persistent storage for session data.
 - Implement user authentication to secure sessions.
 - Support multiple file uploads per session.
 - Add rate limiting to prevent abuse.

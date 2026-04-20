@@ -7,3 +7,5 @@ python-dotenv
 pypdf
 python-multipart
 pydantic
+cachetools
+slowapi
